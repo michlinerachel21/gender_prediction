@@ -1,0 +1,93 @@
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+train_dir = r"D:\gender_pred\Training"
+val_dir   = r"D:\gender_pred\Validation"
+
+#image data generators
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=20,
+    zoom_range=0.2,
+    horizontal_flip=True
+)
+
+val_datagen = ImageDataGenerator(
+    rescale=1./255
+)
+
+train_data = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=(128, 128),
+    batch_size=32,
+    class_mode='binary'
+)
+
+val_data = val_datagen.flow_from_directory(
+    val_dir,
+    target_size=(128, 128),
+    batch_size=32,
+    class_mode='binary'
+)
+
+
+#build cnn model
+model = Sequential([
+    Conv2D(32, (3,3), activation='relu', input_shape=(128,128,3)),
+    MaxPooling2D(2,2),
+
+    Conv2D(64, (3,3), activation='relu'),
+    MaxPooling2D(2,2),
+
+    Conv2D(128, (3,3), activation='relu'),
+    MaxPooling2D(2,2),
+
+    Flatten(),
+    Dense(128, activation='relu'),
+    Dropout(0.5),
+    Dense(1, activation='sigmoid')  # Binary output
+])
+
+
+#compile model 
+model.compile(
+    optimizer='adam',
+    loss='binary_crossentropy',
+    metrics=['accuracy']
+)
+
+
+#train model
+history = model.fit(
+    train_data,
+    epochs=10,
+    validation_data=val_data
+)
+
+
+#save model 
+model.save("gender_prediction_cnn.h5")
+
+
+#predict gender
+from tensorflow.keras.preprocessing import image
+import numpy as np
+
+img_path = r"D:\131509.jpg.jpg"  # your test image
+
+img = image.load_img(img_path, target_size=(128,128))
+img_array = image.img_to_array(img)
+img_array = np.expand_dims(img_array, axis=0)
+img_array = img_array / 255.0
+
+prediction = model.predict(img_array)
+
+if prediction[0][0] > 0.5:
+    print("Male")
+else:
+    print("Female")
+
+#checking classes 
+print(train_data.class_indices)
